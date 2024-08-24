@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -11,6 +12,28 @@ import (
 
 type DB struct {
 	DB *sql.DB
+}
+
+var wg sync.WaitGroup
+
+func insert(conn *sql.DB, st, en int, user []User) {
+
+	defer wg.Done()
+	for idx := st; idx <= en; idx++ {
+
+		query := `
+		INSERT INTO users (id, first_name, last_name, email, gender, ip_address)
+		VALUES ($1, $2, $3, $4, $5, $6);
+		`
+
+		_, err := conn.Exec(query, user[idx].ID, user[idx].FirstName, user[idx].LastName, user[idx].Email, user[idx].Gender, user[idx].IPAddress)
+		if err != nil {
+			log.Println("Error inserting data: ", err)
+			return
+		}
+
+		log.Println("Data inserted successfully ", idx)
+	}
 }
 
 func ConnectToDB() *DB {
@@ -27,9 +50,9 @@ func ConnectToDB() *DB {
 	}
 
 	// Configure connection pooling
-	// db.SetMaxOpenConns(25)                 // Maximum number of open connections to the database
-	// db.SetMaxIdleConns(25)                 // Maximum number of idle connections in the pool
-	// db.SetConnMaxIdleTime(5 * time.Minute) // Maximum amount of time a connection may be idle
+	db.SetMaxOpenConns(25)                 // Maximum number of open connections to the database
+	db.SetMaxIdleConns(25)                 // Maximum number of idle connections in the pool
+	db.SetConnMaxIdleTime(5 * time.Minute) // Maximum amount of time a connection may be idle
 
 	// Test the connection
 	err = db.Ping()
@@ -52,25 +75,16 @@ type Database interface {
 
 func (db *DB) Insert(user []User) {
 	log.Println("Insert is called")
+
 	start := time.Now()
+	wg.Add(4)
 
-	for idx, val := range user {
-		if(idx>10000){
-			break
-		}
-		query := `
-		INSERT INTO users (id, first_name, last_name, email, gender, ip_address)
-		VALUES ($1, $2, $3, $4, $5, $6);
-		`
+	go insert(db.DB, 0, 2500, user)
+	go insert(db.DB, 2501, 5000, user)
+	go insert(db.DB, 5001, 7500, user)
+	go insert(db.DB, 7501, 10000, user)
 
-		_, err := db.DB.Exec(query, val.ID, val.FirstName, val.LastName, val.Email, val.Gender, val.IPAddress)
-		if err != nil {
-			log.Println("Error inserting data: ", err)
-			return
-		}
-
-		log.Println("Data inserted successfully ",idx)
-	}
+	wg.Wait()
 
 	end := time.Since(start)
 
