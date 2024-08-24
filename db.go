@@ -26,10 +26,10 @@ func ConnectToDB() *DB {
 		}
 	}
 
-	// Configure connection pooling
-	// db.SetMaxOpenConns(25)                 // Maximum number of open connections to the database
-	// db.SetMaxIdleConns(25)                 // Maximum number of idle connections in the pool
-	// db.SetConnMaxIdleTime(5 * time.Minute) // Maximum amount of time a connection may be idle
+	//Configure connection pooling
+	db.SetMaxOpenConns(25)                 // Maximum number of open connections to the database
+	db.SetMaxIdleConns(25)                 // Maximum number of idle connections in the pool
+	db.SetConnMaxIdleTime(5 * time.Minute) // Maximum amount of time a connection may be idle
 
 	// Test the connection
 	err = db.Ping()
